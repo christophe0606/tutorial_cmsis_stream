@@ -11,18 +11,6 @@ class Source : public GenericSource<OUT, outputSize>
 public:
     Source(FIFOBase<OUT> &dst) : GenericSource<OUT, outputSize>(dst) {};
 
-    // Used in asynchronous mode. In case of overflow
-    // in the output, the execution of this node will be skipped
-    int prepareForRunning() final
-    {
-        if (this->willOverflow())
-        {
-            return (CG_SKIP_EXECUTION_ID_CODE); // Skip execution
-        }
-
-        return (CG_SUCCESS);
-    };
-
     int run() final
     {
         // Get output buffer. The code does not see the FIFO.
@@ -31,7 +19,7 @@ public:
         // in the run() method.
         OUT *b = this->getWriteBuffer();
 
-         std::cout << "Source" << std::endl;
+        std::cout << "Source" << std::endl;
         for (int i = 0; i < outputSize; i++)
         {
             b[i] = (OUT)i;
@@ -72,21 +60,6 @@ public:
                    FIFOBase<IN> &dst) : GenericNode<IN, inputOutputSize,
                                                     IN, inputOutputSize>(src, dst) {};
 
-    /* In asynchronous mode, node execution will be
-       skipped in case of underflow on the input
-       or overflow in the output.
-    */
-    int prepareForRunning() final
-    {
-        if (this->willOverflow() ||
-            this->willUnderflow())
-        {
-            return (CG_SKIP_EXECUTION_ID_CODE); // Skip execution
-        }
-
-        return (CG_SUCCESS);
-    };
-
     /*
        Node processing
        1 is added to the input
@@ -108,20 +81,9 @@ template <typename IN, int inputSize>
 class Sink : public GenericSink<IN, inputSize>
 {
     static constexpr int maxNbRuns_ = 5;
+
 public:
     Sink(FIFOBase<IN> &src) : GenericSink<IN, inputSize>(src) {};
-
-    // Used in asynchronous mode. In case of underflow on
-    // the input, the execution of this node will be skipped
-    int prepareForRunning() final
-    {
-        if (this->willUnderflow())
-        {
-            return (CG_SKIP_EXECUTION_ID_CODE); // Skip execution
-        }
-
-        return (CG_SUCCESS);
-    };
 
     // Implementation of the node.
     // The input is printed on stdout.
@@ -148,6 +110,35 @@ public:
         }
         return (CG_SUCCESS);
     };
+
 protected:
-  int nbRun_ = 0;
+    int nbRun_ = 0;
+};
+
+// Generic template declaration for processing node
+template <typename IN, int inputSize,
+          typename OUT, int outputSize>
+class Adder;
+
+template <typename IN, int inputOutputSize>
+class Adder<IN, inputOutputSize, IN, inputOutputSize> : public GenericNode<IN, inputOutputSize, IN, inputOutputSize>
+{
+public:
+    /* Constructor needs the input and output FIFOs */
+    Adder(FIFOBase<IN> &src,
+          FIFOBase<IN> &dst,int increment) : GenericNode<IN, inputOutputSize,
+                                           IN, inputOutputSize>(src, dst), increment_(increment) {};
+
+    int run() final
+    {
+        IN *a = this->getReadBuffer();
+        IN *b = this->getWriteBuffer();
+        for (int i = 0; i < inputOutputSize; i++)
+        {
+            b[i] = a[i] + increment_;
+        }
+        return (CG_SUCCESS);
+    };
+protected:
+    int increment_;
 };

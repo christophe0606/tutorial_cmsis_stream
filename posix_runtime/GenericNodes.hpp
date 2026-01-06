@@ -392,7 +392,8 @@ namespace arm_cmsis_stream
     {
     public:
         virtual int run() = 0;
-        virtual int prepareForRunning() = 0;
+        // By default, in asynchronous mode (deprecated), node will skip the execution and be not ready
+        virtual int prepareForRunning() {return CG_SKIP_EXECUTION_ID_CODE;};
         virtual ~NodeBase() {};
 
         NodeBase() : StreamNode() {};

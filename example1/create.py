@@ -43,6 +43,19 @@ class Sink(GenericSink):
         """The name of the C++ class implementing this node"""
         return "Sink"
     
+class Adder(GenericNode):
+    """Processing node with one input and one output of given types and lengths"""
+    def __init__(self,name,theType,inLength,outLength,increment=10):
+        GenericNode.__init__(self,name)
+        self.addInput("i",theType,inLength)
+        self.addOutput("o",theType,outLength)
+        self.addLiteralArg(increment)
+
+    @property
+    def typeName(self):
+        """The name of the C++ class implementing this node"""
+        return "Adder"
+    
 ########################
 ### Creation of the graph
 
@@ -54,6 +67,9 @@ src=Source("source",floatType,128)
 processing=ProcessingNode("processing",floatType,128,128)
 sink=Sink("sink",floatType,128)
 
+# Create an Adder node that adds a constant increment to each sample
+# adder=Adder("adder",floatType,128,128,increment=5)
+
 # Create a Graph object
 the_graph = Graph()
 
@@ -61,6 +77,8 @@ the_graph = Graph()
 the_graph.connect(src.o,processing.i)
 # Connect the processing node to the sink
 the_graph.connect(processing.o,sink.i)
+
+# You may try to insert the adder node between source and processing node
 
 #####################################
 # Generation of the C++ wrapper code and initialization code
