@@ -103,3 +103,5 @@ static inline uint32_t monotonic_ms_u32(void)
 #define CG_TIME_STAMP_TYPE uint32_t
 
 #define CG_GET_TIME_STAMP()  monotonic_ms_u32()  
+
+#define ERROR_PRINT(...) fprintf(stderr, __VA_ARGS__);

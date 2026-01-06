@@ -61,9 +61,6 @@ enum class ThreadPriority
         virtual void waitUntilStarted() = 0;
     };
 
-#if defined(CG_EVENTS_MULTI_THREAD)
-    extern PlatformThread *cg_eventThread;
-#endif
 
 class PosixThread : public PlatformThread
 {

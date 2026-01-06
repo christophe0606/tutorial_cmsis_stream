@@ -27,89 +27,223 @@
 #include "posix_thread.hpp"
 #include "cg_queue.hpp"
 
+#ifdef _WIN32
+#include <windows.h>
+#elif defined(__linux__) || defined(__APPLE__)
+#include <pthread.h>
+#include <sched.h>
+#endif
+
 using namespace arm_cmsis_stream;
 
-bool MyQueue::push(Message &&event)
+MyQueue::MyQueue()
+    : arm_cmsis_stream::EventQueue()
 {
-    bool res = true;
-    CG_MUTEX_ERROR_TYPE err;
-    CG_ENTER_CRITICAL_SECTION(queue_mutex, err);
-    if (nb_elems < MY_QUEUE_MAX_ELEMS)
+   
+    for (uint32_t p = 0; p < nb_priorities; p++)
     {
-        nb_elems++;
-        queue.push(std::move(event));
+        queue[p] = new (std::nothrow) Message[MY_QUEUE_MAX_ELEMS];
+        read[p] = 0;
+        write[p] = 0;
+        nb_elems[p] = 0;
     }
-    else
+}
+
+MyQueue::~MyQueue()
+{
+    for (uint32_t p = 0; p < nb_priorities; p++)
     {
-        res = false;
+        delete[] queue[p];
     }
-    CG_EXIT_CRITICAL_SECTION(queue_mutex, err);
-    if (res)
+}
+
+
+bool MyQueue::push(arm_cmsis_stream::Message &&event)
+{
+    bool ok = false;
+    CG_MUTEX_ERROR_TYPE error;
+    CG_ENTER_CRITICAL_SECTION(queue_mutex, error);
+    if (!CG_MUTEX_HAS_ERROR(error))
     {
-        if (cg_eventThread)
-            cg_eventThread->wakeup(); // Notify the thread to process the queue
+        uint32_t p = event.event.priority;
+        if (p >= nb_priorities)
+        {
+            p = nb_priorities - 1; // Highest priority
+        }
+        if (nb_elems[p] < MY_QUEUE_MAX_ELEMS)
+        {
+            // LOG_DBG("Push event %d\n", event.event.event_id);
+            uint32_t timestamp = CG_GET_TIME_STAMP();
+            event.timestamp = timestamp;
+            queue[p][write[p]++] = std::move(event);
+            if (write[p] == MY_QUEUE_MAX_ELEMS)
+            {
+                write[p] = 0; // Wrap around
+            }
+
+            nb_elems[p]++;
+            ok = true;
+        }
+        else
+        {
+            ERROR_PRINT("Event queue overflow for priority %d\n", p);
+        }
     }
-    return res;
-    // std::cout << "Event pushed to queue: " << event.event.event_id << std::endl;
+    CG_EXIT_CRITICAL_SECTION(queue_mutex, error);
+    
+    notifyQueue();
+    
+
+    return ok;
 }
 
 bool MyQueue::isEmpty()
 {
-    bool r;
-    CG_MUTEX_ERROR_TYPE err;
-    CG_ENTER_CRITICAL_SECTION(queue_mutex, err);
-    r = queue.empty();
-    CG_EXIT_CRITICAL_SECTION(queue_mutex, err);
+    bool r = true;
+    CG_MUTEX_ERROR_TYPE error;
+    CG_ENTER_CRITICAL_SECTION(queue_mutex, error);
+    for (uint32_t p = 0; p < nb_priorities; p++)
+    {
+        if (nb_elems[p] != 0)
+        {
+            r = false;
+            break;
+        }
+    }
+    CG_EXIT_CRITICAL_SECTION(queue_mutex, error);
     return r;
 }
 
 void MyQueue::clear()
 {
-    CG_MUTEX_ERROR_TYPE err;
-    CG_ENTER_CRITICAL_SECTION(queue_mutex, err);
-    while (!queue.empty())
+    CG_MUTEX_ERROR_TYPE error;
+    CG_ENTER_CRITICAL_SECTION(queue_mutex, error);
+    if (!CG_MUTEX_HAS_ERROR(error))
     {
-        queue.pop();
+        for (uint32_t p = 0; p < nb_priorities; p++)
+        {
+
+            while (nb_elems[p] != 0)
+            {
+                Message msg = std::move(queue[p][read[p]++]);
+                if (read[p] == MY_QUEUE_MAX_ELEMS)
+                {
+                    read[p] = 0; // Wrap around
+                }
+                nb_elems[p]--;
+                msg = Message(); // Reset the message
+            }
+        }
     }
-    CG_EXIT_CRITICAL_SECTION(queue_mutex, err);
+    CG_EXIT_CRITICAL_SECTION(queue_mutex, error);
 }
 
+void MyQueue::end() noexcept
+{
+    mustEnd_.store(true);
+    notifyQueue();
+    
+};
+
+
+
+// The thread priority will be changed according to the event priority
+// The thread priority is always the highest to extract events from the queue
+// and then change to the event priority to process the event
 void MyQueue::execute()
 {
-    bool empty = false;
-    CG_MUTEX_ERROR_TYPE err;
-    while (!empty)
+    CG_MUTEX_ERROR_TYPE error;
+    while (!this->mustEnd())
     {
-
-        Message msg;
-        bool messageWasRead = false;
-
-        // processEvent may push in async way some new events.
-        // So the lock must eb released before
-        // process event is called.
-        CG_ENTER_CRITICAL_SECTION(queue_mutex, err);
-        empty = queue.empty();
-        if (!empty)
+        while ((!this->mustEnd()) && (!isEmpty()))
         {
-            msg = std::move(queue.front());
-            queue.pop();
-            nb_elems--;
-            messageWasRead = true;
-        }
-        CG_EXIT_CRITICAL_SECTION(queue_mutex, err);
+            Message msg;
+            bool messageWasReceived = false;
+            CG_ENTER_CRITICAL_SECTION(queue_mutex, error);
 
-        if (messageWasRead)
-        {
-            if (std::holds_alternative<LocalDestination>(msg.destination))
+            if (!CG_MUTEX_HAS_ERROR(error))
             {
-                LocalDestination &local = std::get<LocalDestination>(msg.destination);
-                local.dst->processEvent(local.dstPort, std::move(msg.event));
+                for (int32_t p = nb_priorities - 1; p >= 0; p--)
+                {
+                    if (nb_elems[p] != 0)
+                    {
+                        msg = std::move(queue[p][read[p]++]);
+                        if (read[p] == MY_QUEUE_MAX_ELEMS)
+                        {
+                            read[p] = 0; // Wrap around
+                        }
+
+                        nb_elems[p]--;
+                        messageWasReceived = true;
+                        break;
+                    }
+                }
             }
-            else if (std::holds_alternative<DistantDestination>(msg.destination))
+            CG_EXIT_CRITICAL_SECTION(queue_mutex, error);
+
+            // Process event with no lock held
+            if (messageWasReceived)
             {
-                DistantDestination &dist = std::get<DistantDestination>(msg.destination);
-                this->callHandler(dist.src_node_id, std::move(msg.event));
+                bool eventExpired = false;
+                if (msg.event.ttl != 0)
+                {
+                    uint32_t startMs = 	msg.timestamp ;
+                    uint32_t limitMs = startMs + msg.event.ttl;
+                    uint32_t nowMs = 	CG_GET_TIME_STAMP();
+                    if (nowMs > limitMs)
+                    {
+                        // Event expired
+                        eventExpired = true;
+                    }
+                }
+                if (!eventExpired)
+                {
+
+                    std::thread::id tid = std::this_thread::get_id();
+                    uint32_t p = msg.event.priority;
+                    if (p >= nb_priorities)
+                    {
+                        p = nb_priorities - 1; // Highest priority
+                    }
+                    switch(p)
+                    {
+                        case kLowPriority:
+                            cg_eventThread_->setPriority(ThreadPriority::Low);
+                            break;
+                        case kNormalPriority:
+                            cg_eventThread_->setPriority(ThreadPriority::Normal);
+                            break;
+                        case kHighPriority:
+                            cg_eventThread_->setPriority(ThreadPriority::High);
+                            break;
+                        default:
+                            cg_eventThread_->setPriority(ThreadPriority::Normal);
+                            break;
+                    }
+                    if (std::holds_alternative<LocalDestination>(msg.destination))
+                    {
+                        LocalDestination &local = std::get<LocalDestination>(msg.destination);
+                        local.dst->processEvent(local.dstPort, std::move(msg.event));
+                    }
+                    else if (std::holds_alternative<DistantDestination>(msg.destination))
+                    {
+                        DistantDestination &dist = std::get<DistantDestination>(msg.destination);
+                        this->callHandler(dist.src_node_id, std::move(msg.event));
+                    }
+                    cg_eventThread_->setPriority(ThreadPriority::High); // Back to highest priority
+                }
             }
         }
+        if (this->mustEnd())
+        {
+            return;
+        }
+        // If new event was pushed and missed with the
+        // empty test
+        // In more recent version of Zephyr there is
+        // a k_event_wait_safe that clears the events
+        // in an atomic way.
+        waitEvent();
+
     }
 }

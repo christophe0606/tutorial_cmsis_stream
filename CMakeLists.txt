@@ -7,7 +7,7 @@ project(tutorial)
 set(CMAKE_CXX_STANDARD 17)
 
 
-add_executable(test main.cpp)
+add_executable(test main.cpp init.cpp)
 
 add_subdirectory(posix_runtime)
 
