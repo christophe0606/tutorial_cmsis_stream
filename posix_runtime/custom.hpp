@@ -33,8 +33,6 @@
 #define CG_EVENTS_MULTI_THREAD
 
 #define CG_MUTEX std::shared_mutex
-#define CG_INIT_MUTEX(MUTEX)
-#define CG_MUTEX_DELETE(MUTEX, ERROR)
 #define CG_MUTEX_ERROR_TYPE int
 #define CG_MUTEX_HAS_ERROR(ERROR) (ERROR != 0)
 
@@ -56,15 +54,6 @@
   ERROR = 0;                                        \
   }
 
-
-// At the end of the schedule, clear the event queue
-// We should not process events after the schedule has ended since the nodes may been
-// destroyed. (If node initializations is done in the schedule function).
-#define CG_AFTER_SCHEDULE                                 \
-  if (arm_cmsis_stream::EventQueue::cg_eventQueue)        \
-  {                                                       \
-    arm_cmsis_stream::EventQueue::cg_eventQueue->clear(); \
-  }
 
 // Because memory optimization is enabled
 #define CG_BEFORE_BUFFER alignas(16)

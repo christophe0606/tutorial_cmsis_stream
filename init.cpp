@@ -86,6 +86,7 @@ int start_example()
     // Otherwise, the tutorial would never end.
     // In a real application if we want to stop the event graph we should call the event queue end function from somewhere else.
     // We add a pause before stopping event processing just for the tutorial to process some additional remaining events
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     arm_cmsis_stream::EventQueue::cg_eventQueue->end();
 
     // Wait for event queue to finish
