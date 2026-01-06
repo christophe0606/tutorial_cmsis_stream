@@ -14,7 +14,8 @@ add_subdirectory(posix_runtime)
 
 # Uncomment the example you want to test
 #add_subdirectory(example1) # Simple dataflow graph
-add_subdirectory(example2) # Dataflow graph with one event node
-
+#add_subdirectory(example2) # Dataflow graph with one event node
+#add_subdirectory(example3) # Dataflow graph with one named event node
+add_subdirectory(example4) # Dataflow graph with one named event node and buffer exchange
 
 target_link_libraries(test PUBLIC example)

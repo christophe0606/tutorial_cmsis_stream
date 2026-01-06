@@ -1,0 +1,18 @@
+{
+  "ProcessingNode<float,128>": {
+    "isTemplate": true,
+    "selectors": [
+      "SEL_NUMBER_ID"
+    ]
+  },
+  "Source<float,128>": {
+    "isTemplate": true,
+    "selectors": []
+  },
+  "Sink": {
+    "isTemplate": false,
+    "selectors": [
+      "SEL_NUMBER_ID"
+    ]
+  }
+}

@@ -1,6 +1,8 @@
 #include "init.hpp"
 #include <iostream>
 #include <cstdint>
+#include <thread>
+#include <chrono>
 
 extern "C"
 {
@@ -46,6 +48,7 @@ int start_example()
     t.start();
     t.waitUntilStarted(); // Wait until the thread is ready to process events
 
+    // Init may generate events in the queue so the event thread should already be started.
     int error = init_scheduler();
     if (error != CG_SUCCESS)
     {
@@ -77,8 +80,15 @@ int start_example()
 
 
     ts.join();
+    // In a pure event graph application, the dataflow part may stop (because there is no dataflow)
+    // and the event part would continue to run.
+    // Here we are forcing the event part to stop by asking the event queue to stop processing./
+    // Otherwise, the tutorial would never end.
+    // In a real application if we want to stop the event graph we should call the event queue end function from somewhere else.
+    // We add a pause before stopping event processing just for the tutorial to process some additional remaining events
     arm_cmsis_stream::EventQueue::cg_eventQueue->end();
 
+    // Wait for event queue to finish
     t.join();
 
     free_scheduler();

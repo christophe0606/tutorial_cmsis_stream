@@ -25,7 +25,7 @@ class Source(GenericSource):
 class ProcessingNode(GenericSink):
     """Processing node with one input and one event output"""
     def __init__(self,name,theType,inLength):
-        GenericSink.__init__(self,name)
+        GenericSink.__init__(self,name,selectors=["number"])
         self.addInput("i",theType,inLength)
         self.addEventOutput(1)
 
@@ -38,7 +38,7 @@ class ProcessingNode(GenericSink):
 class Sink(BaseNode):
     """Sink node consuming events"""
     def __init__(self,name):
-        BaseNode.__init__(self,name)
+        BaseNode.__init__(self,name,selectors=["number"])
         self.addEventInput(1)
 
     @property
