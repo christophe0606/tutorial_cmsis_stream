@@ -1,0 +1,14 @@
+{
+  "ProcessingNode<float,128,float,128>": {
+    "isTemplate": true,
+    "selectors": []
+  },
+  "Sink<float,128>": {
+    "isTemplate": true,
+    "selectors": []
+  },
+  "Source<float,128>": {
+    "isTemplate": true,
+    "selectors": []
+  }
+}
