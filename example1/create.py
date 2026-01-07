@@ -114,10 +114,11 @@ print(f"Memory usage {scheduling.memory} bytes")
 
 # Generation of the files
 # Generate the C++ state machine and initialization code in current directory
+# The files scheduler.cpp and scheduler.h
 scheduling.ccode(".",conf)
 
 # Optional : generate some json data
-# It can be used by external tools. For instance, one coudlcould imagine a PC sending an event
+# It can be used by external tools. For instance, one could imagine a PC sending an event
 # to a graph running on a board. In that case, the node ID and selector ID must be known
 # The json is giving a mapping from string to ID.
 # This mapping is graph dependent
@@ -131,4 +132,5 @@ with open("./description/graph.dot","w") as f:
         scheduling.graphviz(f,style=myStyle)
 
 # Optional : if graphviz tools installed you can generate a png or pdf
+# If the tool is not installed, comment this line.
 subprocess.run(["dot","-Tpng","./description/graph.dot","-o","./graph.png"])

@@ -9,8 +9,8 @@
 
 using namespace arm_cmsis_stream;
 
-// Template describes the numpert of IO ports.
-// For each port there is the datatype and the number of samples
+// Template describes the number of IO ports.
+// For each port, there is the datatype and the number of samples
 // Inputs are listed first, then outputs.
 // For a source node there are no inputs, only outputs.
 template <typename OUT, int outputSize>
