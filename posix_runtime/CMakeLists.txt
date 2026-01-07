@@ -6,3 +6,4 @@ add_library(posix_runtime STATIC
 )
 
 target_include_directories(posix_runtime PUBLIC .)
+target_link_libraries(posix_runtime PUBLIC stream)
