@@ -23,7 +23,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include "custom.hpp"
+#include "stream_platform_config.hpp"
 #include "posix_thread.hpp"
 #include "cg_queue.hpp"
 
@@ -35,6 +35,10 @@
 #endif
 
 using namespace arm_cmsis_stream;
+
+void *EventQueue::handlerData = nullptr;
+EventQueue::AppHandler EventQueue::handler = nullptr;
+std::atomic<bool> EventQueue::handlerReady_ = false;
 
 MyQueue::MyQueue()
     : arm_cmsis_stream::EventQueue()
@@ -86,7 +90,7 @@ bool MyQueue::push(arm_cmsis_stream::Message &&event)
         }
         else
         {
-            ERROR_PRINT("Event queue overflow for priority %d\n", p);
+            LOG_ERR("Event queue overflow for priority %d\n", p);
         }
     }
     CG_EXIT_CRITICAL_SECTION(queue_mutex, error);
@@ -228,7 +232,7 @@ void MyQueue::execute()
                     else if (std::holds_alternative<DistantDestination>(msg.destination))
                     {
                         DistantDestination &dist = std::get<DistantDestination>(msg.destination);
-                        this->callHandler(dist.src_node_id, std::move(msg.event));
+                        this->callAsyncHandler(dist.src_node_id, std::move(msg.event));
                     }
                     cg_eventThread_->setPriority(ThreadPriority::High); // Back to highest priority
                 }

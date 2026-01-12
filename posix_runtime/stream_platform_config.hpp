@@ -93,4 +93,9 @@ static inline uint32_t monotonic_ms_u32(void)
 
 #define CG_GET_TIME_STAMP()  monotonic_ms_u32()  
 
-#define ERROR_PRINT(...) fprintf(stderr, __VA_ARGS__);
+#define LOG_ERR(...) fprintf(stderr, __VA_ARGS__);
+#define LOG_DBG(...) fprintf(stderr, __VA_ARGS__);
+
+#define CG_TENSOR_NB_DIMS 2
+
+#define CG_MAX_VALUES 4

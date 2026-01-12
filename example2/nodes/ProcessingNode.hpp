@@ -15,7 +15,7 @@ class ProcessingNode: public GenericSink<IN, inputSize>
 
 public:
     /* Constructor needs the input and output FIFOs */
-    ProcessingNode(FIFOBase<IN> &src) : GenericSink<IN, inputSize>(src) {};
+    ProcessingNode(FIFOBase<IN> &src, EventQueue *queue) : GenericSink<IN, inputSize>(src),ev0(queue) {};
 
     /*
        Node processing

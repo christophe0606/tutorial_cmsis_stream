@@ -17,7 +17,7 @@ public:
     enum selector {selNumber=0};
     static std::array<uint16_t,1> selectors;
     /* Constructor needs the input and output FIFOs */
-    ProcessingNode(FIFOBase<IN> &src) : GenericSink<IN, inputSize>(src) {};
+    ProcessingNode(FIFOBase<IN> &src, EventQueue *queue) : GenericSink<IN, inputSize>(src),ev0(queue) {};
 
     /*
        Node processing

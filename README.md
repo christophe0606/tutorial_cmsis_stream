@@ -8,9 +8,9 @@ You must first install the cmsis-stream python package:
 pip install cmsis-stream
 ```
 
-Then, link the example you want to run in the `CMakeLists.txt`
-
 Build and run.
+
+Run an example from `build\Debug`
 
 Look at the Python script `create.py` and C++ `AppNodes.hpp` file in each example folder for more explanations.
 

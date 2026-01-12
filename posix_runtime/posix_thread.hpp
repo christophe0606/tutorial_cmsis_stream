@@ -33,7 +33,7 @@
 #include <mutex>
 
 #include "cg_enums.h"
-#include "custom.hpp"
+#include "stream_platform_config.hpp"
 #include "StreamNode.hpp"
 #include "EventQueue.hpp"
 

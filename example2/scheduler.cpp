@@ -9,7 +9,8 @@ The support classes and code are covered by CMSIS-Stream license.
 
 
 #include <cstdint>
-#include "custom.hpp"
+#include "app_config.hpp"
+#include "stream_platform_config.hpp"
 #include "cg_enums.h"
 #include "StreamNode.hpp"
 #include "cstream_node.h"
@@ -154,8 +155,9 @@ CStreamNode* get_scheduler_node(int32_t nodeID)
     return(&identifiedNodes[nodeID]);
 }
 
-int init_scheduler()
+int init_scheduler(void *evtQueue_)
 {
+    EventQueue *evtQueue = reinterpret_cast<EventQueue *>(evtQueue_);
 
     CG_BEFORE_FIFO_INIT;
     fifos.fifo0 = new (std::nothrow) FIFO<float,FIFOSIZE0,1,0>(streambuf0);
@@ -167,7 +169,7 @@ int init_scheduler()
     CG_BEFORE_NODE_INIT;
     cg_status initError;
 
-    nodes.processing = new (std::nothrow) ProcessingNode<float,128>(*(fifos.fifo0));
+    nodes.processing = new (std::nothrow) ProcessingNode<float,128>(*(fifos.fifo0),evtQueue);
     if (nodes.processing==NULL)
     {
         return(CG_MEMORY_ALLOCATION_FAILURE);
@@ -234,6 +236,19 @@ void free_scheduler()
     {
         delete nodes.sink;
     }
+}
+
+void reset_fifos_scheduler(int all)
+{
+    if (fifos.fifo0!=NULL)
+    {
+       fifos.fifo0->reset();
+    }
+   // Buffers are set to zero too
+   if (all)
+   {
+       std::fill_n(streambuf0, BUFFERSIZE0, (uint8_t)0);
+   }
 }
 
 

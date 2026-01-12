@@ -11,7 +11,6 @@ extern "C"
 #include "scheduler.h"
 }
 
-#include "custom.hpp"
 #include "StreamNode.hpp"
 #include "EventQueue.hpp"
 #include "StreamNode.hpp"
@@ -32,14 +31,14 @@ bool app_handler(int src_node_id, void *data, arm_cmsis_stream::Event &&evt)
 int start_example()
 {
     MyQueue *queue = new MyQueue();
-    arm_cmsis_stream::EventQueue::cg_eventQueue = queue;
-    arm_cmsis_stream::EventQueue::cg_eventQueue->setHandler(nullptr, app_handler);
+    
+    arm_cmsis_stream::EventQueue::setHandler(nullptr, app_handler);
 
-    PosixThread t([]
+    PosixThread t([queue]
                   {
                       std::cout << "Event thread started!" << std::endl;
                       // If we are done with the scheduling, we exit the thread
-                      arm_cmsis_stream::EventQueue::cg_eventQueue->execute();
+                      queue->execute();
                       std::cout << "Event thread quitted!" << std::endl;
                   });
 
@@ -49,11 +48,11 @@ int start_example()
     t.waitUntilStarted(); // Wait until the thread is ready to process events
 
     // Init may generate events in the queue so the event thread should already be started.
-    int error = init_scheduler();
+    int error = init_scheduler(queue);
     if (error != CG_SUCCESS)
     {
         std::cout << "Error during scheduler initialization : " << error << std::endl;
-        arm_cmsis_stream::EventQueue::cg_eventQueue->end();
+        queue->end();
         t.join();
         return error;
     }
@@ -87,14 +86,13 @@ int start_example()
     // In a real application if we want to stop the event graph we should call the event queue end function from somewhere else.
     // We add a pause before stopping event processing just for the tutorial to process some additional remaining events
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    arm_cmsis_stream::EventQueue::cg_eventQueue->end();
+    queue->end();
 
     // Wait for event queue to finish
     t.join();
 
     free_scheduler();
 
-    delete arm_cmsis_stream::EventQueue::cg_eventQueue;
-    arm_cmsis_stream::EventQueue::cg_eventQueue = nullptr;
+    delete queue;
     return (error);
 }
